@@ -1,7 +1,5 @@
 import gym
 import numpy as np
-from gym import error, spaces, utils
-from gym.utils import seeding
 
 
 # TODO: time resolution
@@ -14,8 +12,9 @@ class WaterTreatmentEnv(gym.Env):
         self.inflow = inflow
         self.out_max = 1
         self.out_ref = .5
-        self.volume = None
         self.last_in = None
+        self.volume = None
+        self.volume_safety_factor = .1
         self.volume_max = 100
 
         self.viewer = None
@@ -25,7 +24,7 @@ class WaterTreatmentEnv(gym.Env):
         self.seed()
 
     def reset(self):
-        self.volume = 50
+        self.volume = 30
         self.last_in = self.inflow()
         return self._get_obs()
 
@@ -54,12 +53,31 @@ class WaterTreatmentEnv(gym.Env):
 
         if self.viewer is None:
             self.viewer = rendering.Viewer(500, 500)
-            self.viewer.set_bounds(-1, 1, -1.2, 1.2)
+            self.viewer.set_bounds(-3, 3, -1, 9)
+        # widths
+        side, tip = 2.5, .4
+        # heights
+        top = 8
+        top_margin = top - top * self.volume_safety_factor
+        bot_margin = top * self.volume_safety_factor
+        bot = 0
+        # frame
+        self.viewer.draw_polygon(
+            [(tip, bot), (side, bot_margin), (side, top), (-side, top), (-side, bot_margin), (-tip, bot)], filled=False)
 
-        l, r, t, b = .1, -.1, 1, - 1
-        self.viewer.draw_polygon([(l, b), (l, t), (r, t), (r, b)], filled=False)
-        t = 2 * (self.volume / self.volume_max) - 1
-        self.viewer.draw_polygon([(l, b), (l, t), (r, t), (r, b)])
+        # dashes
+        for height in [top_margin, bot_margin]:
+            for pair in np.linspace(side, -side, 20).reshape((-1, 2)).tolist():
+                self.viewer.draw_line(*zip(pair, [height, height]))
+
+        # filling
+        top *= self.volume / self.volume_max
+        if top < bot_margin:
+            # correct drawing width if we are in the tapered end
+            side = tip + (side - tip) * (top - bot) / (bot_margin - bot)
+            bot_margin = top
+        self.viewer.draw_polygon(
+            [(tip, bot), (side, bot_margin), (side, top), (-side, top), (-side, bot_margin), (-tip, bot)])
 
         return self.viewer.render(return_rgb_array=mode == 'rgb_array')
 

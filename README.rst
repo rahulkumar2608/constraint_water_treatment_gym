@@ -10,11 +10,9 @@ Constraint Water Treatment Gym
         :target: https://travis-ci.com/stheid/constraint_water_treatment_gym
 
 
-
 OpenAI Gym implementation of a simple water treatment plant. The gym is created with constrained reinforcement learning in mind.
 
-
-* Free software: GNU General Public License v3
+.. image:: examples/vid.gif
 
 
 Installation
