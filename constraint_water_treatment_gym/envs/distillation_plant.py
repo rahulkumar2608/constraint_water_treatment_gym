@@ -8,14 +8,14 @@ import numpy as np
 class WaterTreatmentEnv(gym.Env):
     metadata = {'render.modes': ['human', 'rgb_array']}
 
-    def __init__(self, inflow=lambda: .5):
+    def __init__(self, inflow=lambda: .5, out_ref=.5, out_max=1, safety_factor: float = .1, volume_max: float = 100.0):
         self.inflow = inflow
-        self.out_max = 1
-        self.out_ref = .5
+        self.out_ref = out_ref
+        self.out_max = out_max
         self.last_in = None
         self.volume = None
-        self.volume_safety_factor = .1
-        self.volume_max = 100
+        self.volume_safety_factor = safety_factor
+        self.volume_max = volume_max
 
         self.viewer = None
 
@@ -37,7 +37,17 @@ class WaterTreatmentEnv(gym.Env):
 
         # validate and fail overflow
         if self.volume > self.volume_max:
-            return self._get_obs(), -100, True, dict(reason='overflow')
+            return self._get_obs(), -100, True, dict(safety='overflow')
+
+        # validate safety limits
+        if self.volume < 0:
+            info = dict(safety='empty')
+        if self.volume < self.volume_safety_factor:
+            info = dict(safety='lower')
+        elif self.volume > self.volume_max - self.volume_safety_factor:
+            info = dict(safety='upper')
+        else:
+            info = dict(safety='ok')
 
         # validate and correct underflow
         underflow = min(self.volume, 0)
@@ -46,7 +56,7 @@ class WaterTreatmentEnv(gym.Env):
 
         cost = (self.out_ref - out) ** 2
 
-        return self._get_obs(), 1 - cost, False, {}
+        return self._get_obs(), 1 - cost, False, info
 
     def render(self, mode='human'):
         from gym.envs.classic_control import rendering
