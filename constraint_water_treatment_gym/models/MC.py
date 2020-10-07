@@ -1,13 +1,15 @@
-from typing import List
+from typing import List, Union, Optional
 
 import numpy as np
 
 
 class MarkovChain:
-    def __init__(self, values: List[float], transitions: list, start: int = None):
+    def __init__(self, values: Union[np.ndarray, List[float]], transitions: Union[np.ndarray, list],
+                 start: Optional[int] = None):
         transitions = np.array(transitions)
         if len(transitions.shape) != 2 or not (
-                len(values) == transitions.shape[0] == transitions.shape[1]) or not 0 <= start < len(values):
+                len(values) == transitions.shape[0] == transitions.shape[1]) or (
+                start is not None and not 0 <= start < len(values)):
             raise ValueError('shape missmatch')
 
         self.n = len(values)
@@ -26,9 +28,10 @@ class MarkovChain:
         #     pi= pi@self.trans
 
         w, v = np.linalg.eig(self.trans.T)
-        if np.count_nonzero(w == 1) != 1:
+        one_eigenvalue = np.abs(w - 1) < 1e-7
+        if np.count_nonzero(one_eigenvalue) != 1:
             ValueError('could not calculate expectation, not exactly one "1"-valued eigenvalue')
-        stationary = v[:, w == 1].sum(axis=1)
+        stationary = v[:, one_eigenvalue].sum(axis=1)
         stationary /= stationary.sum()
         return stationary
 

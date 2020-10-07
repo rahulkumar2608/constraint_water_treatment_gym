@@ -40,7 +40,7 @@ setup(
     name='constraint_water_treatment_gym',
     packages=find_packages(include=['constraint_water_treatment_gym', 'constraint_water_treatment_gym.*']),
     setup_requires=setup_requirements,
-    extras_require=dict(examples=['stable-baselines3']),
+    extras_require=dict(examples=['stable-baselines3, pandas, seaborn, torch, matplotlib']),
     test_suite='tests',
     tests_require=test_requirements,
     url='https://github.com/stheid/constraint_water_treatment_gym',
