@@ -12,32 +12,31 @@ from experiments.plotting.networks import visualize_nets
 
 np.random.seed(0)
 inflow = MarkovChain(np.linspace(0, 1, 5),
-                     .9 * np.eye(5) +
-                     .1 * np.array([[0, .5, .5, 0, 0],
+                     .5 * np.eye(5) +
+                     .5 * np.array([[0, .5, .5, 0, 0],
                                     [0, 0, 0, .2, .8],
                                     [0, 1, 0, 0, 0],
                                     [0, 0, 1, 0, 0],
                                     [0, 1, 0, 0, 0]]))
 
-vol_max = 10
+env_cfg = dict(safety_factor=.1, vol_init=np.random.uniform, vol_max=10, penalty=1000, steps_max=100)
 
-timestamp = datetime.now().strftime('%Y.%b.%d %X')
+timestamp = datetime.now().strftime(f'%Y.%b.%d %X {env_cfg}')
 makedirs(timestamp)
 env = gym.make('constraint_water_treatment_gym:distillation-plant-v0',
                inflow=inflow.step,
-               out_ref=inflow.expectation(), penalty_scale=120,
-               safety_factor=.2, volume_max=vol_max, max_eps_len=4000)
-env = gym.make('MountainCarContinuous-v0')
+               out_ref=inflow.expectation(), **env_cfg)
 with open(f'{timestamp}/env.txt', 'w') as f:
-    print(repr(env), file=f)
+    print(str(env), file=f)
+with open(f'{timestamp}/inflow.txt', 'w') as f:
+    print(str(inflow), file=f)
 env = Monitor(env)
 
-model = PPO('MlpPolicy', env, verbose=1, tensorboard_log=f'{timestamp}/')
-model.learn(total_timesteps=100000)
+model = PPO('MlpPolicy', env, verbose=1, tensorboard_log=f'{timestamp}/', gamma=.5)
+model.learn(total_timesteps=5000000)
 model.save(f'{timestamp}/model')
 
-domain = np.rot90(np.array([env.observation_space.high, env.observation_space.low]), k=3)
-visualize_nets(env, model, timestamp, domain=domain)
+visualize_nets(env, model, timestamp)
 
 rec = VideoRecorder(env, f'{timestamp}/vid.mp4')
 obs = env.reset()

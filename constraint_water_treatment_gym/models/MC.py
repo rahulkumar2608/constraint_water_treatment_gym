@@ -45,6 +45,12 @@ class MarkovChain:
     def expectation(self):
         return np.array(self.values) @ self.stationary
 
+    def __str__(self):
+        return f'{self.__class__}:\n' \
+               f'v = {self.values}\n' \
+               f'tran = {self.trans}\n' \
+               f'exp = {self.expectation()}'
+
 
 if __name__ == '__main__':
     mc = MarkovChain([1, 3], [[.99, .01], [0.5, .5]])

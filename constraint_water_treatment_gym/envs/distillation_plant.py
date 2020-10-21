@@ -1,3 +1,6 @@
+from numbers import Real
+from typing import Callable, Union, Optional
+
 import gym
 import numpy as np
 
@@ -8,20 +11,20 @@ import numpy as np
 class WaterTreatmentEnv(gym.Env):
     metadata = {'render.modes': ['human', 'rgb_array']}
 
-    def __init__(self, inflow=lambda: .5, out_ref=.5, out_max=1, safety_factor: float = .1, volume_init: float = None,
-                 volume_max: float = 100.0,
-                 penalty_scale=100, max_eps_len=400):
+    def __init__(self, inflow=lambda: .5, out_ref=.5, out_max=1, safety_factor: float = .1,
+                 vol_init: Optional[Union[int, float, Callable]] = None, vol_max: float = 100.0,
+                 penalty=100, steps_max=400):
         self.inflow = inflow
         self.out_ref = out_ref
         self.out_max = out_max
-        self.volume_init = volume_init
+        self.volume_init = vol_init
         self.last_in = None
         self.volume = None
         self.volume_safety_factor = safety_factor
-        self.volume_max = volume_max
-        self.penaltyscale = penalty_scale
+        self.volume_max = vol_max
+        self.penaltyscale = penalty
         self.steps = None
-        self.max_eps_len = float('inf') if max_eps_len is None else max_eps_len
+        self.steps_max = float('inf') if steps_max is None else steps_max
 
         self.viewer = None
 
@@ -31,17 +34,19 @@ class WaterTreatmentEnv(gym.Env):
 
     def reset(self):
         if self.volume_init is None:
-            self.volume = np.random.uniform(self.volume_safety_factor,
-                                            (1 - self.volume_safety_factor) * self.volume_max)
-        else:
+            self.volume = np.random.uniform(self.volume_safety_factor, (1 - self.volume_safety_factor)) \
+                          * self.volume_max
+        elif isinstance(self.volume_init, Real):
             self.volume = self.volume_init * self.volume_max
+        else:
+            self.volume = self.volume_init() * self.volume_max
         self.last_in = self.inflow()
         self.steps = 0
         return self._get_obs()
 
     def step(self, action: np.ndarray):
         self.steps += 1
-        if self.steps > self.max_eps_len:
+        if self.steps > self.steps_max:
             raise ValueError("called an exceded env. please reset env before calling step again")
 
         self.last_in = self.inflow()
@@ -74,7 +79,7 @@ class WaterTreatmentEnv(gym.Env):
                                np.clip(self.volume + limit - self.volume_max, 0, limit)) ** 2
         penalty = self.penaltyscale * violation
 
-        return self._get_obs(), reward - penalty, self.steps >= self.max_eps_len, info
+        return self._get_obs(), reward - penalty, self.steps >= self.steps_max, info
 
     def render(self, mode='human'):
         from gym.envs.classic_control import rendering
@@ -114,10 +119,10 @@ class WaterTreatmentEnv(gym.Env):
             self.viewer.close()
             self.viewer = None
 
-    def __repr__(self):
+    def __str__(self):
         return f'{self.__class__}(out_ref={self.out_ref}, ' \
                f'vol=[0,{self.volume_safety_factor},{(1 - self.volume_safety_factor) * self.volume_max},{self.volume_max}], ' \
-               f'max_steps={self.max_eps_len}, penalty={self.penaltyscale}'
+               f'max_steps={self.steps_max}, penalty={self.penaltyscale}'
 
     def _get_obs(self):
         return np.array([self.last_in, self.volume / self.volume_max])
