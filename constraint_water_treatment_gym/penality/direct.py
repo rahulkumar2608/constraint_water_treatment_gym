@@ -10,6 +10,6 @@ class DirectPenalty(Penalty):
         super().__init__()
         self.limits = (low, high)
 
-    def value(self, policy, obs):
+    def __call__(self, policy, obs):
         # err = (obs - np.clip(obs,*self.limits))**2
         pass
