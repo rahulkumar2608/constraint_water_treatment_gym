@@ -1,3 +1,7 @@
 gym~=0.17.1
 setuptools~=50.3.0
 numpy~=1.19.1
+matplotlib~=3.3.2
+pandas~=1.1.2
+seaborn~=0.11.0
+torch~=1.6.0

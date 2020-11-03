@@ -17,11 +17,11 @@ class WaterTreatmentEnv(gym.Env):
         self.inflow = inflow
         self.out_ref = out_ref
         self.out_max = out_max
-        self.volume_init = vol_init
         self.last_in = None
-        self.volume = None
-        self.volume_safety_factor = safety_factor
-        self.volume_max = vol_max
+        self.vol_init = vol_init
+        self.vol = None
+        self.vol_safety_factor = safety_factor
+        self.vol_max = vol_max
         self.penaltyscale = penalty
         self.steps = None
         self.steps_max = float('inf') if steps_max is None else steps_max
@@ -33,13 +33,13 @@ class WaterTreatmentEnv(gym.Env):
         self.seed()
 
     def reset(self):
-        if self.volume_init is None:
-            self.volume = np.random.uniform(self.volume_safety_factor, (1 - self.volume_safety_factor)) \
-                          * self.volume_max
-        elif isinstance(self.volume_init, Real):
-            self.volume = self.volume_init * self.volume_max
+        if self.vol_init is None:
+            self.vol = np.random.uniform(self.vol_safety_factor, (1 - self.vol_safety_factor)) \
+                       * self.vol_max
+        elif isinstance(self.vol_init, Real):
+            self.vol = self.vol_init * self.vol_max
         else:
-            self.volume = self.volume_init() * self.volume_max
+            self.vol = self.vol_init() * self.vol_max
         self.last_in = self.inflow()
         self.steps = 0
         return self._get_obs()
@@ -53,20 +53,20 @@ class WaterTreatmentEnv(gym.Env):
         out = self.out_max * action.squeeze()
 
         delta = self.last_in - out
-        self.volume += delta
+        self.vol += delta
 
         # validate safety limits
-        if self.volume < 0:
+        if self.vol < 0:
             info = dict(safety='empty')
-            out += self.volume
-            self.volume = 0
-        elif self.volume < self.volume_safety_factor:
+            out += self.vol
+            self.vol = 0
+        elif self.vol < self.vol_safety_factor:
             info = dict(safety='lower')
-        elif self.volume > self.volume_max:
+        elif self.vol > self.vol_max:
             info = dict(safety='overflow')
-            out += self.volume - self.volume_max
-            self.volume = self.volume_max
-        elif self.volume > (1 - self.volume_safety_factor) * self.volume_max:
+            out += self.vol - self.vol_max
+            self.vol = self.vol_max
+        elif self.vol > (1 - self.vol_safety_factor) * self.vol_max:
             info = dict(safety='upper')
         else:
             info = dict(safety='ok')
@@ -74,9 +74,9 @@ class WaterTreatmentEnv(gym.Env):
         reward = 1 - (self.out_ref - out) ** 2 / self.out_max ** 2
 
         # calculating penalty
-        limit = self.volume_safety_factor * self.volume_max
-        violation = np.maximum(np.clip(limit - self.volume, 0, limit),
-                               np.clip(self.volume + limit - self.volume_max, 0, limit)) ** 2
+        limit = self.vol_safety_factor * self.vol_max
+        violation = np.maximum(np.clip(limit - self.vol, 0, limit),
+                               np.clip(self.vol + limit - self.vol_max, 0, limit)) ** 2
         penalty = self.penaltyscale * violation
 
         return self._get_obs(), reward - penalty, self.steps >= self.steps_max, info
@@ -91,8 +91,8 @@ class WaterTreatmentEnv(gym.Env):
         side, tip = 2.5, .4
         # heights
         top = 8
-        top_margin = top - top * self.volume_safety_factor
-        bot_margin = top * self.volume_safety_factor
+        top_margin = top - top * self.vol_safety_factor
+        bot_margin = top * self.vol_safety_factor
         bot = 0
         # frame
         self.viewer.draw_polygon(
@@ -104,7 +104,7 @@ class WaterTreatmentEnv(gym.Env):
                 self.viewer.draw_line(*zip(pair, [height, height]))
 
         # filling
-        top *= self.volume / self.volume_max
+        top *= self.vol / self.vol_max
         if top < bot_margin:
             # correct drawing width if we are in the tapered end
             side = tip + (side - tip) * (top - bot) / (bot_margin - bot)
@@ -121,8 +121,8 @@ class WaterTreatmentEnv(gym.Env):
 
     def __str__(self):
         return f'{self.__class__}(out_ref={self.out_ref}, ' \
-               f'vol=[0,{self.volume_safety_factor},{(1 - self.volume_safety_factor) * self.volume_max},{self.volume_max}], ' \
+               f'vol=[0,{self.vol_safety_factor},{(1 - self.vol_safety_factor) * self.vol_max},{self.vol_max}], ' \
                f'max_steps={self.steps_max}, penalty={self.penaltyscale}'
 
     def _get_obs(self):
-        return np.array([self.last_in, self.volume / self.volume_max])
+        return np.array([self.last_in, self.vol / self.vol_max])

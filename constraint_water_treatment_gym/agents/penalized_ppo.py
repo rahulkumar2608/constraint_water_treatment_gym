@@ -1,4 +1,4 @@
-from typing import Union, Type
+from typing import Union, Type, Optional, Callable, Dict, Any
 
 import numpy as np
 import torch as th
@@ -15,10 +15,53 @@ from constraint_water_treatment_gym.penality import Penalty
 
 class PenalizedPPO(PPO):
     def __init__(self, policy: Union[str, Type[ActorCriticPolicy]], env: Union[GymEnv, str], penalty: Penalty,
-                 penalty_coeff):
-        super().__init__(policy, env)
+                 penalty_coef,
+                 learning_rate: Union[float, Callable] = 3e-4,
+                 n_steps: int = 2048,
+                 n_epochs: int = 10,
+                 batch_size=64,
+                 gamma: float = 0.99,
+                 gae_lambda: float = 0.95,
+                 clip_range: float = 0.2,
+                 clip_range_vf: Optional[float] = None,
+                 ent_coef: float = 0.0,
+                 vf_coef: float = 0.5,
+                 max_grad_norm: float = 0.5,
+                 use_sde: bool = False,
+                 sde_sample_freq: int = -1,
+                 target_kl: Optional[float] = None,
+                 tensorboard_log: Optional[str] = None,
+                 create_eval_env: bool = False,
+                 policy_kwargs: Optional[Dict[str, Any]] = None,
+                 verbose: int = 0,
+                 seed: Optional[int] = None,
+                 device: Union[th.device, str] = "auto"):
+        super().__init__(
+            policy,
+            env,
+            n_epochs=n_epochs,
+            batch_size=batch_size,
+            learning_rate=learning_rate,
+            n_steps=n_steps,
+            target_kl=target_kl,
+            gamma=gamma,
+            gae_lambda=gae_lambda,
+            clip_range=clip_range,
+            clip_range_vf=clip_range_vf,
+            ent_coef=ent_coef,
+            vf_coef=vf_coef,
+            max_grad_norm=max_grad_norm,
+            use_sde=use_sde,
+            sde_sample_freq=sde_sample_freq,
+            tensorboard_log=tensorboard_log,
+            policy_kwargs=policy_kwargs,
+            verbose=verbose,
+            device=device,
+            create_eval_env=create_eval_env,
+            seed=seed,
+            _init_setup_model=True)
         self.penalty = penalty
-        self.penalty_coeff = penalty_coeff
+        self.penalty_coef = penalty_coef
 
     def train(self) -> None:
         # Update optimizer learning rate
@@ -37,7 +80,7 @@ class PenalizedPPO(PPO):
         for epoch in range(self.n_epochs):
             approx_kl_divs = []
             # Do a complete pass on the rollout buffer
-            for rollout_data in self.rollout_buffer.get(1):
+            for rollout_data in self.rollout_buffer.get(self.batch_size):
                 actions = rollout_data.actions
                 if isinstance(self.action_space, spaces.Discrete):
                     # Convert discrete action from float to long
@@ -88,8 +131,8 @@ class PenalizedPPO(PPO):
 
                 entropy_losses.append(entropy_loss.item())
 
-                loss = policy_loss + self.ent_coef * entropy_loss + self.vf_coef * value_loss + self.penalty_coeff * self.penalty(
-                    self.policy, rollout_data.observations)
+                loss = policy_loss + self.ent_coef * entropy_loss + self.vf_coef * value_loss + self.penalty_coef * self.penalty(
+                    self.policy, rollout_data.observations).mean()
 
                 # Optimization step
                 self.policy.optimizer.zero_grad()
