@@ -19,7 +19,7 @@ inflow = MarkovChain(np.linspace(0, 1, 5),
                                     [0, 0, 1, 0, 0],
                                     [0, 1, 0, 0, 0]]))
 
-env_cfg = dict(safety_factor=.1, vol_init=np.random.uniform, vol_max=10, penalty=1000, steps_max=100)
+env_cfg = dict(safety_factor=.1, vol_init=None, vol_max=10, penalty=1, steps_max=100)
 
 timestamp = datetime.now().strftime(f'%Y.%b.%d %X {env_cfg}')
 makedirs(timestamp)

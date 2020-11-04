@@ -5,7 +5,7 @@ import seaborn as sns
 import torch
 
 
-def create_heatmap(timestamp, v, name, env, domain=None):
+def create_heatmap(path, v, name, env, domain=None):
     if domain is None:
         domain = [[0, 1], [0, 1]]
     heatmap_kwargs = {}
@@ -21,10 +21,10 @@ def create_heatmap(timestamp, v, name, env, domain=None):
     sns.heatmap(df, ax=ax, cmap='icefire', xticklabels=5, yticklabels=5, **heatmap_kwargs)
     ax.set_title(name)
     ax.invert_yaxis()
-    fig.savefig(f'{timestamp}/{name.lower()}.pdf')
+    fig.savefig(f'{path}_{name.lower()}.pdf')
 
 
-def visualize_nets(env, model, timestamp, domain=None, value=True, policy=True):
+def visualize_nets(env, model, path, domain=None, value=True, policy=True):
     if value:
         def v(i, vol):
             obs = np.array([i, vol])
@@ -32,10 +32,10 @@ def visualize_nets(env, model, timestamp, domain=None, value=True, policy=True):
             observation = torch.as_tensor(observation)
             return model.policy.forward(observation, deterministic=True)[1].item()
 
-        create_heatmap(timestamp, v, 'Value', env, domain=domain)
+        create_heatmap(path, v, 'Value', env, domain=domain)
 
     if policy:
         def pi(i, vol):
             return model.predict(np.array([i, vol]), deterministic=True)[0].item()
 
-        create_heatmap(timestamp, pi, 'Policy', env, domain=domain)
+        create_heatmap(path, pi, 'Policy', env, domain=domain)

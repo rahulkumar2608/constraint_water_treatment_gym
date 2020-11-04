@@ -86,7 +86,7 @@ class WaterTreatmentEnv(gym.Env):
 
         if self.viewer is None:
             self.viewer = rendering.Viewer(500, 500)
-            self.viewer.set_bounds(-3, 3, -1, 9)
+            self.viewer.set_bounds(-5, 5, -1, 9)
         # widths
         side, tip = 2.5, .4
         # heights

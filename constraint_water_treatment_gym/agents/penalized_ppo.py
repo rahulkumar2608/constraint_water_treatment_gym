@@ -73,7 +73,7 @@ class PenalizedPPO(PPO):
             clip_range_vf = self.clip_range_vf(self._current_progress_remaining)
 
         entropy_losses, all_kl_divs = [], []
-        pg_losses, value_losses = [], []
+        pg_losses, value_losses, penalty_losses = [], [], []
         clip_fractions = []
 
         # train for gradient_steps epochs
@@ -130,9 +130,10 @@ class PenalizedPPO(PPO):
                     entropy_loss = -th.mean(entropy)
 
                 entropy_losses.append(entropy_loss.item())
+                penalty = self.penalty(self.policy, rollout_data.observations).mean()
+                penalty_losses.append(penalty.item())
 
-                loss = policy_loss + self.ent_coef * entropy_loss + self.vf_coef * value_loss + self.penalty_coef * self.penalty(
-                    self.policy, rollout_data.observations).mean()
+                loss = policy_loss + self.ent_coef * entropy_loss + self.vf_coef * value_loss + self.penalty_coef * penalty
 
                 # Optimization step
                 self.policy.optimizer.zero_grad()
@@ -155,6 +156,7 @@ class PenalizedPPO(PPO):
         logger.record("train/entropy_loss", np.mean(entropy_losses))
         logger.record("train/policy_gradient_loss", np.mean(pg_losses))
         logger.record("train/value_loss", np.mean(value_losses))
+        logger.record("train/penalty_loss", np.mean(penalty_losses))
         logger.record("train/approx_kl", np.mean(approx_kl_divs))
         logger.record("train/clip_fraction", np.mean(clip_fraction))
         logger.record("train/loss", loss.item())

@@ -13,6 +13,6 @@ class DivertModel:
 
     def __call__(self, act: th.Tensor, obs: th.Tensor):
         if obs[1] < .5:
-            return th.Tensor([0, obs[1] + act / self.env.vol_max])
+            return th.stack([th.tensor(0), obs[1] - act / self.env.vol_max])
         else:
-            return th.Tensor([1, obs[1] + (act + 1) / self.env.vol_max])
+            return th.stack([th.tensor(1), obs[1] + (1 - act) / self.env.vol_max])
