@@ -1,4 +1,4 @@
-from typing import Union, Type, Optional, Callable, Dict, Any
+from typing import Union, Type, Optional, Callable, Dict, Any, List
 
 import numpy as np
 import torch as th
@@ -168,3 +168,6 @@ class PenalizedPPO(PPO):
         logger.record("train/clip_range", clip_range)
         if self.clip_range_vf is not None:
             logger.record("train/clip_range_vf", clip_range_vf)
+
+    def excluded_save_params(self) -> List[str]:
+        return ['penalty'] + super().excluded_save_params()

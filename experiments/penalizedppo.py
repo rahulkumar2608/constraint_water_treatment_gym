@@ -4,13 +4,13 @@ from os import makedirs
 import gym
 import numpy as np
 from gym.wrappers.monitoring.video_recorder import VideoRecorder
+from .plotting.networks import visualize_nets
 from stable_baselines3.common.callbacks import CheckpointCallback, CallbackList, EveryNTimesteps, BaseCallback
 from stable_baselines3.common.monitor import Monitor
 
 from constraint_water_treatment_gym.agents.penalized_ppo import PenalizedPPO
 from constraint_water_treatment_gym.models import MarkovChain
-from constraint_water_treatment_gym.penality.simple import SimplePenalty
-from plotting.networks import visualize_nets
+from constraint_water_treatment_gym.penality.stateindependent import StateSetPenalty
 
 np.random.seed(0)
 inflow = MarkovChain(np.linspace(0, 1, 5),
@@ -22,7 +22,7 @@ inflow = MarkovChain(np.linspace(0, 1, 5),
                                     [0, 1, 0, 0, 0]]))
 
 env_cfg = dict(safety_factor=.1, vol_init=None, vol_max=10, penalty=0, steps_max=500)
-model_cfg = dict(penalty_coef=5000)
+model_cfg = dict(penalty_coef=1e6)
 
 timestamp = datetime.now().strftime(f'%Y.%b.%d %X {env_cfg}')
 makedirs(timestamp)
@@ -66,7 +66,7 @@ class ExecCallback(BaseCallback):
         rec.close()
 
 
-model = PenalizedPPO('MlpPolicy', env_wrap, penalty=SimplePenalty(env), verbose=1,
+model = PenalizedPPO('MlpPolicy', env_wrap, penalty=StateSetPenalty(env), verbose=1,
                      tensorboard_log=f'{timestamp}/', **model_cfg)
 callbacks = [
     CheckpointCallback(save_freq=100000, save_path=f'{timestamp}/checkpoints/'),
