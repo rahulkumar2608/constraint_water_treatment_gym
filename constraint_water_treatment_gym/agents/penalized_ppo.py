@@ -14,7 +14,8 @@ from constraint_water_treatment_gym.penality import Penalty
 
 
 class PenalizedPPO(PPO):
-    def __init__(self, policy: Union[str, Type[ActorCriticPolicy]], env: Union[GymEnv, str], penalty: Penalty,
+    def __init__(self, policy: Union[str, Type[ActorCriticPolicy]], env: Union[GymEnv, str], safety_oracle: Penalty,
+                 penalty: Penalty,
                  penalty_coef,
                  learning_rate: Union[float, Callable] = 3e-4,
                  n_steps: int = 2048,
@@ -60,6 +61,7 @@ class PenalizedPPO(PPO):
             create_eval_env=create_eval_env,
             seed=seed,
             _init_setup_model=True)
+        self.safety_oracle = safety_oracle
         self.penalty = penalty
         self.penalty_coef = penalty_coef
 
@@ -75,6 +77,7 @@ class PenalizedPPO(PPO):
         entropy_losses, all_kl_divs = [], []
         pg_losses, value_losses, penalty_losses = [], [], []
         clip_fractions = []
+        unsafe_count = []
 
         # train for gradient_steps epochs
         for epoch in range(self.n_epochs):
@@ -132,6 +135,7 @@ class PenalizedPPO(PPO):
                 entropy_losses.append(entropy_loss.item())
                 penalty = self.penalty(self.policy, rollout_data.observations).mean()
                 penalty_losses.append(penalty.item())
+                unsafe_count.append(np.count_nonzero(self.safety_oracle(self.policy, rollout_data.observations).item()))
 
                 loss = policy_loss + self.ent_coef * entropy_loss + self.vf_coef * value_loss + self.penalty_coef * penalty
 
@@ -155,6 +159,7 @@ class PenalizedPPO(PPO):
         # Logs
         logger.record("train/entropy_loss", np.mean(entropy_losses))
         logger.record("train/policy_gradient_loss", np.mean(pg_losses))
+        logger.record("train/unsafe_states", np.sum(unsafe_count))
         logger.record("train/value_loss", np.mean(value_losses))
         logger.record("train/penalty_loss", np.mean(penalty_losses))
         logger.record("train/approx_kl", np.mean(approx_kl_divs))
